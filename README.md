@@ -1,5 +1,8 @@
 # Getting Started with (NBA) Nyako's Betting Assistant
 
+Tech Stack:
+ReactJS + Tailwind CSS + Supabase
+
 ## Available Scripts
 
 In the project directory, you can run:
