@@ -285,7 +285,7 @@ export default function Dashboard() {
                 }}
               />
               <h2 className={`text-2xl font-bold ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                Place Your Bet
+                Place Your Result
               </h2>
             </div>
             <button 
