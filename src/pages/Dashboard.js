@@ -4,8 +4,9 @@ import Button from "../components/ui/button";
 import { FiSun, FiMoon, FiX, FiCheck, FiTrendingUp, FiTrendingDown, FiUser, FiDollarSign, FiSearch, FiFilter, FiSettings } from "react-icons/fi";
 import Modal from "../components/ui/modal";
 
+// You're using useAuth but haven't imported it
 import { useAuth } from '../hooks/useAuth';
-import AuthModal from './auth/AuthModal';
+import AuthModal from '../components/auth/AuthModal';
 
 // Helper function to get logo filename
 const getLogoFilename = (teamName) => {
@@ -62,6 +63,11 @@ export default function Dashboard() {
   const handleTeamClick = (team) => {
     setSelectedTeam(team);
     if (activeTab === "user") {
+      if (!user) {
+        setShowAuthModal(true);
+        setAuthMode('signin');
+        return;
+      }
       setShowPredictionModal(true);
     } else {
       setShowTeamStatsModal(true);
@@ -613,14 +619,19 @@ export default function Dashboard() {
         
         <div className="flex gap-2">
           {user ? (
-            <Button 
-              onClick={signOut}
-              variant="secondary" 
-              className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-medium transition-all hover:scale-105 active:scale-95"
-              darkMode={darkMode}
-            >
-              Sign Out
-            </Button>
+            <div className="flex items-center gap-4">
+              <span className={darkMode ? "text-gray-300" : "text-gray-700"}>
+                Welcome, {user.user_metadata?.username || user.email}
+              </span>
+              <Button 
+                onClick={signOut}
+                variant="secondary" 
+                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-medium transition-all hover:scale-105 active:scale-95"
+                darkMode={darkMode}
+              >
+                Sign Out
+              </Button>
+            </div>
           ) : (
             <>
               <Button 
@@ -789,6 +800,12 @@ export default function Dashboard() {
       {showPredictionModal && renderPredictionModal()}
       {showTeamStatsModal && renderTeamStatsModal()}
       {showAccountSettings && renderAccountSettingsModal()}
+      <AuthModal 
+        darkMode={darkMode} 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)}
+        initialMode={authMode}
+      />
 
       {/* Add custom animation styles in the global CSS or a style tag */}
       <style jsx>{`
