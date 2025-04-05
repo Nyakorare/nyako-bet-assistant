@@ -1,10 +1,14 @@
+// App.js
+import { AuthProvider } from './context/AuthContext';
 import Dashboard from "./pages/Dashboard";
 
 function App() {
   return (
-    <div className="App">
-      <Dashboard />
-    </div>
+    <AuthProvider>
+      <div className="App">
+        <Dashboard />
+      </div>
+    </AuthProvider>
   );
 }
 
