@@ -1,3 +1,4 @@
+// src/pages/dashboard-components/TeamCards.js
 import { useState } from "react";
 import { FiSearch, FiFilter } from "react-icons/fi";
 import Button from "../../components/ui/button";
@@ -61,41 +62,43 @@ export default function TeamCards({
   return (
     <>
       {/* Hotbar with search and filter */}
-      <div className={`sticky top-16 z-40 p-4 ${
-        darkMode ? 'bg-gray-800/80 border-b border-gray-700' : 'bg-white border-b border-gray-200'
-      } backdrop-blur-sm`}>
-        <div className="flex items-center justify-between gap-4">
-          <div className={`flex items-center flex-1 max-w-md px-4 py-2 rounded-lg ${
-            darkMode ? 'bg-gray-700' : 'bg-gray-100'
-          }`}>
-            <FiSearch className={`mr-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-            <input
-              type="text"
-              placeholder={`Search ${activeTab === 'global' ? 'teams' : 'your predictions'}...`}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full bg-transparent focus:outline-none ${
-                darkMode ? 'placeholder-gray-500' : 'placeholder-gray-400'
-              }`}
-            />
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <FiFilter className={darkMode ? "text-gray-400" : "text-gray-600"} />
-            <select
-              value={selectedFilter}
-              onChange={(e) => setSelectedFilter(e.target.value)}
-              className={`px-3 py-2 rounded-lg ${
-                darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-800'
-              } cursor-pointer`}
-            >
-              {filterOptions.map(option => (
-                <option key={option.id} value={option.id}>{option.label}</option>
-              ))}
-            </select>
+      {activeTab === "global" && (
+        <div className={`sticky top-16 z-40 p-4 ${
+          darkMode ? 'bg-gray-800/80 border-b border-gray-700' : 'bg-white border-b border-gray-200'
+        } backdrop-blur-sm`}>
+          <div className="flex items-center justify-between gap-4">
+            <div className={`flex items-center flex-1 max-w-md px-4 py-2 rounded-lg ${
+              darkMode ? 'bg-gray-700' : 'bg-gray-100'
+            }`}>
+              <FiSearch className={`mr-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+              <input
+                type="text"
+                placeholder={`Search ${activeTab === 'global' ? 'teams' : 'your predictions'}...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={`w-full bg-transparent focus:outline-none ${
+                  darkMode ? 'placeholder-gray-500' : 'placeholder-gray-400'
+                }`}
+              />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <FiFilter className={darkMode ? "text-gray-400" : "text-gray-600"} />
+              <select
+                value={selectedFilter}
+                onChange={(e) => setSelectedFilter(e.target.value)}
+                className={`px-3 py-2 rounded-lg ${
+                  darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-800'
+                } cursor-pointer`}
+              >
+                {filterOptions.map(option => (
+                  <option key={option.id} value={option.id}>{option.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Main Content */}
       <main className={`flex-grow p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 ${
@@ -136,30 +139,30 @@ export default function TeamCards({
               }`}>{team.name}</h2>
               
               {/* Stats grid */}
-  <div className="grid grid-cols-2 gap-2 text-sm">
-    <div className={`${darkMode ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-600'} p-2 rounded`}>
-      <p>Win Rate</p>
-      <p className={`font-semibold ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-        {team.wr || 'N/A'}
-      </p>
-    </div>
-    <div className={`${darkMode ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-600'} p-2 rounded`}>
-      <p>Wins</p>
-      <p className="font-semibold">{team.wins || '0'}</p>
-    </div>
-    <div className={`${darkMode ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-600'} p-2 rounded`}>
-      <p>Losses</p>
-      <p className="font-semibold">{team.losses || '0'}</p>
-    </div>
-    {activeTab === 'global' && (
-      <div className={`${darkMode ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-600'} p-2 rounded`}>
-        <p>Rank</p>
-        <p className="font-semibold">#{team.rank || 'N/A'}</p>
-      </div>
-    )}
-  </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className={`${darkMode ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-600'} p-2 rounded`}>
+                  <p>Win Rate</p>
+                  <p className={`font-semibold ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                    {team.wr || 'N/A'}
+                  </p>
+                </div>
+                <div className={`${darkMode ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-600'} p-2 rounded`}>
+                  <p>Wins</p>
+                  <p className="font-semibold">{team.wins || '0'}</p>
+                </div>
+                <div className={`${darkMode ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-600'} p-2 rounded`}>
+                  <p>Losses</p>
+                  <p className="font-semibold">{team.losses || '0'}</p>
+                </div>
+                {activeTab === 'global' && (
+                  <div className={`${darkMode ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-600'} p-2 rounded`}>
+                    <p>Rank</p>
+                    <p className="font-semibold">#{team.rank || 'N/A'}</p>
+                  </div>
+                )}
+              </div>
               
-              {activeTab === "user" && (
+              {activeTab === "user" && user && (
                 <Button
                   onClick={(e) => {
                     e.stopPropagation();

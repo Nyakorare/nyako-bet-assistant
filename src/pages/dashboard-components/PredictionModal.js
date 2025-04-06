@@ -1,3 +1,4 @@
+// src/pages/dashboard-components/PredictionModal.js
 import { useState } from "react";
 import { FiX, FiCheck, FiTrendingUp, FiTrendingDown } from "react-icons/fi";
 import Modal from "../../components/ui/modal";
@@ -13,9 +14,9 @@ export default function PredictionModal({
   nbaTeams 
 }) {
   const [step, setStep] = useState(1);
-  const [actualOutcome, setActualOutcome] = useState(null); // true = win, false = loss
+  const [actualOutcome, setActualOutcome] = useState(null);
   const [selectedOpponent, setSelectedOpponent] = useState(null);
-  const [betType, setBetType] = useState(null); // 'for' or 'against'
+  const [betType, setBetType] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { recordPrediction } = useAuth();
@@ -30,26 +31,15 @@ export default function PredictionModal({
     setError(null);
     
     try {
-      // Calculate if the bet was correct
       const betCorrect = (actualOutcome && betType === 'for') || 
                         (!actualOutcome && betType === 'against');
 
-      // Record prediction for selected team
       await recordPrediction({
         team_name: selectedTeam.name,
         opponent: selectedOpponent,
         bet_type: betType,
         outcome: betCorrect,
         actual_outcome: actualOutcome
-      });
-
-      // Record inverse prediction for opponent team
-      await recordPrediction({
-        team_name: selectedOpponent,
-        opponent: selectedTeam.name,
-        bet_type: betType === 'for' ? 'against' : 'for',
-        outcome: !betCorrect,
-        actual_outcome: !actualOutcome
       });
 
       resetForm();
@@ -154,6 +144,9 @@ export default function PredictionModal({
                 <FiTrendingDown className="text-2xl" />
                 <span>AGAINST {selectedTeam.name.split(' ').pop()}</span>
               </Button>
+            </div>
+            <div className={`mt-4 p-3 rounded-lg text-sm ${darkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+              <p>Note: Your prediction will be collected as anonymous data in the global statistics to help improve our predictions.</p>
             </div>
             <Button
               onClick={handlePredictionSubmit}

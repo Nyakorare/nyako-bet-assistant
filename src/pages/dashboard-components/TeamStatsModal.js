@@ -1,3 +1,4 @@
+// src/pages/dashboard-components/TeamStatsModal.js
 import { useState, useEffect } from "react";
 import { FiX, FiTrendingUp, FiTrendingDown } from "react-icons/fi";
 import Modal from "../../components/ui/modal";

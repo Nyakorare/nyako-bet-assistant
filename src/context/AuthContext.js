@@ -1,3 +1,4 @@
+// src/context/AuthContext.js
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
@@ -19,6 +20,9 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
+      if (event === 'SIGNED_OUT') {
+        window.location.reload(); // Refresh page on sign out
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -27,11 +31,20 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     loading,
-    signOut: () => supabase.auth.signOut(),
+    signOut: async () => {
+      await supabase.auth.signOut();
+      window.location.reload(); // Ensure page refreshes after sign out
+    },
     recordPrediction: async (predictionData) => {
+      if (!user) return { error: 'Not authenticated' };
+      
       const { data, error } = await supabase
         .from('predictions')
-        .insert([predictionData])
+        .insert([{
+          ...predictionData,
+          user_id: user.id,
+          username: user.user_metadata?.username || user.email.split('@')[0]
+        }])
         .select()
         .single();
       return { data, error };
@@ -41,14 +54,17 @@ export function AuthProvider({ children }) {
       const { data, error } = await supabase
         .from('predictions')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
       return { data, error };
     },
     getTeamPredictions: async (teamName) => {
+      if (!user) return { data: null, error: 'Not authenticated' };
       const { data, error } = await supabase
         .from('predictions')
         .select('*')
-        .eq('team_name', teamName);
+        .eq('team_name', teamName)
+        .eq('user_id', user.id);
       return { data, error };
     },
     getGlobalStats: async () => {
