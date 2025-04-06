@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { FiSearch, FiFilter } from "react-icons/fi";
 import Button from "../../components/ui/button";
 import { filterOptions, getLogoFilename } from "../Dashboard";
