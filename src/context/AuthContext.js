@@ -9,8 +9,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const getSession = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) console.error('Session error:', error);
+      const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
       setLoading(false);
     };
@@ -28,54 +27,34 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     loading,
-    signOut: async () => {
-      const { error } = await supabase.auth.signOut();
-      if (error) console.error('Sign out error:', error);
-    },
+    signOut: () => supabase.auth.signOut(),
     recordPrediction: async (predictionData) => {
-      if (!user) return { error: 'Not authenticated' };
-      
       const { data, error } = await supabase
         .from('predictions')
-        .insert([{
-          user_id: user.id,
-          ...predictionData
-        }])
+        .insert([predictionData])
         .select()
         .single();
-      
       return { data, error };
     },
     getUserPredictions: async () => {
       if (!user) return { data: null, error: 'Not authenticated' };
-      
       const { data, error } = await supabase
         .from('predictions')
         .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      
+        .eq('user_id', user.id);
       return { data, error };
     },
     getTeamPredictions: async (teamName) => {
       const { data, error } = await supabase
         .from('predictions')
         .select('*')
-        .eq('team_name', teamName)
-        .order('created_at', { ascending: false });
-      
+        .eq('team_name', teamName);
       return { data, error };
     },
-    updatePredictionOutcome: async (predictionId, outcome) => {
-      if (!user) return { error: 'Not authenticated' };
-      
+    getGlobalStats: async () => {
       const { data, error } = await supabase
         .from('predictions')
-        .update({ outcome })
-        .eq('id', predictionId)
-        .select()
-        .single();
-      
+        .select('*');
       return { data, error };
     }
   };

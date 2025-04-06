@@ -31,11 +31,7 @@ export const filterOptions = [
   { id: 'highest-wins', label: 'Highest Wins' },
   { id: 'highest-losses', label: 'Highest Losses' },
   { id: 'highest-wr', label: 'Highest Win Rate' },
-  { id: 'lowest-wr', label: 'Lowest Win Rate' },
-  { id: 'user-highest-wins', label: 'Your Highest Wins' },
-  { id: 'user-highest-losses', label: 'Your Highest Losses' },
-  { id: 'user-highest-wr', label: 'Your Highest WR' },
-  { id: 'user-lowest-wr', label: 'Your Lowest WR' }
+  { id: 'lowest-wr', label: 'Lowest Win Rate' }
 ];
 
 export default function Dashboard() {
@@ -51,7 +47,7 @@ export default function Dashboard() {
   const [authType, setAuthType] = useState("signin");
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [globalStats, setGlobalStats] = useState({});
-  const [userPredictions, setUserPredictions] = useState([]);
+  const [userStats, setUserStats] = useState({});
   const { user, getTeamPredictions, getUserPredictions } = useAuth();
 
   const toggleDarkMode = () => {
@@ -74,108 +70,98 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    const fetchGlobalStats = async () => {
+    const fetchStats = async () => {
       const stats = {};
       
       await Promise.all(nbaTeams.map(async (team) => {
         const { data } = await getTeamPredictions(team.name);
-        const resolved = data?.filter(p => p.outcome !== null) || [];
-        const wins = resolved.filter(p => p.outcome === true).length;
-        const losses = resolved.filter(p => p.outcome === false).length;
-        const total = wins + losses;
+        const winsFor = data?.filter(p => p.outcome === true && p.bet_type === 'for').length || 0;
+        const winsAgainst = data?.filter(p => p.outcome === true && p.bet_type === 'against').length || 0;
+        const lossesFor = data?.filter(p => p.outcome === false && p.bet_type === 'for').length || 0;
+        const lossesAgainst = data?.filter(p => p.outcome === false && p.bet_type === 'against').length || 0;
         
         stats[team.name] = {
-          wins,
-          losses,
-          wr: total > 0 ? `${Math.round((wins / total) * 100)}%` : '0%'
+          wins: winsFor + winsAgainst,
+          losses: lossesFor + lossesAgainst,
+          winsFor,
+          winsAgainst,
+          lossesFor,
+          lossesAgainst,
+          wr: (winsFor + winsAgainst) > 0 ? 
+              `${Math.round(((winsFor + winsAgainst) / (winsFor + winsAgainst + lossesFor + lossesAgainst)) * 100)}%` : '0%'
         };
       }));
 
       // Calculate ranks
       const rankedTeams = Object.entries(stats)
-        .sort(([, a], [, b]) => {
-          const aWr = parseFloat(a.wr);
-          const bWr = parseFloat(b.wr);
-          return bWr - aWr;
+          .sort(([, a], [, b]) => parseFloat(b.wr) - parseFloat(a.wr));
+        
+        rankedTeams.forEach(([teamName], index) => {
+          stats[teamName].rank = index + 1;
         });
-      
-      rankedTeams.forEach(([teamName], index) => {
-        stats[teamName].rank = index + 1;
-      });
 
-      setGlobalStats(stats);
-    };
+        setGlobalStats(stats);
+      };
 
-    if (activeTab === 'global') {
-      fetchGlobalStats();
-    }
-  }, [activeTab, showPredictionModal]);
-
-  useEffect(() => {
-    const fetchUserPredictions = async () => {
-      if (user) {
+      const fetchUserStats = async () => {
+        if (!user) return;
+        
+        const stats = {};
         const { data } = await getUserPredictions();
-        setUserPredictions(data || []);
+        
+        nbaTeams.forEach(team => {
+          const teamPreds = data?.filter(p => p.team_name === team.name) || [];
+          const winsFor = teamPreds.filter(p => p.outcome === true && p.bet_type === 'for').length;
+          const winsAgainst = teamPreds.filter(p => p.outcome === true && p.bet_type === 'against').length;
+          const lossesFor = teamPreds.filter(p => p.outcome === false && p.bet_type === 'for').length;
+          const lossesAgainst = teamPreds.filter(p => p.outcome === false && p.bet_type === 'against').length;
+          const total = winsFor + winsAgainst + lossesFor + lossesAgainst;
+          
+          stats[team.name] = {
+            wins: winsFor + winsAgainst,
+            losses: lossesFor + lossesAgainst,
+            winsFor,
+            winsAgainst,
+            lossesFor,
+            lossesAgainst,
+            wr: total > 0 ? `${Math.round(((winsFor + winsAgainst) / total) * 100)}%` : 'N/A'
+          };
+        });
+  
+        setUserStats(stats);
+      };
+  
+      if (activeTab === 'global') {
+        fetchStats();
+      } else {
+        fetchUserStats();
       }
-    };
-    
-    if (activeTab === 'user') {
-      fetchUserPredictions();
-    }
-  }, [activeTab, user, showPredictionModal]);
+    }, [activeTab, user, showPredictionModal]);
 
-  const calculateUserStats = (teamName) => {
-    const teamPreds = userPredictions.filter(p => p.team_name === teamName);
-    const resolved = teamPreds.filter(p => p.outcome !== null);
-    const wins = resolved.filter(p => p.outcome === true).length;
-    const losses = resolved.filter(p => p.outcome === false).length;
-    const total = wins + losses;
-    
-    return {
-      userWins: wins,
-      userLosses: losses,
-      userWr: total > 0 ? `${Math.round((wins / total) * 100)}%` : 'N/A'
-    };
-  };
-
-  const filteredTeams = nbaTeams
+    const filteredTeams = nbaTeams
     .map(team => ({
       ...team,
-      ...(globalStats[team.name] || { wins: 0, losses: 0, wr: '0%', rank: 30 }),
-      ...calculateUserStats(team.name)
+      ...(activeTab === 'global' ? globalStats[team.name] : userStats[team.name]),
+      rank: activeTab === 'global' ? globalStats[team.name]?.rank : undefined
     }))
     .filter(team => 
       team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       team.name.split(' ').pop().toLowerCase().includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => {
-      const useUserStats = selectedFilter.includes('user');
-      const statA = useUserStats ? {
-        wins: a.userWins,
-        losses: a.userLosses,
-        wr: parseFloat(a.userWr) || 0
-      } : {
-        wins: a.wins,
-        losses: a.losses,
-        wr: parseFloat(a.wr) || 0
-      };
+      const aWins = a.wins || 0;
+      const bWins = b.wins || 0;
+      const aLosses = a.losses || 0;
+      const bLosses = b.losses || 0;
+      const aWr = parseFloat(a.wr) || 0;
+      const bWr = parseFloat(b.wr) || 0;
 
-      const statB = useUserStats ? {
-        wins: b.userWins,
-        losses: b.userLosses,
-        wr: parseFloat(b.userWr) || 0
-      } : {
-        wins: b.wins,
-        losses: b.losses,
-        wr: parseFloat(b.wr) || 0
-      };
-
-      switch (selectedFilter.replace('user-', '')) {
-        case 'highest-wins': return statB.wins - statA.wins;
-        case 'highest-losses': return statB.losses - statA.losses;
-        case 'highest-wr': return statB.wr - statA.wr;
-        case 'lowest-wr': return statA.wr - statB.wr;
-        default: return statB.wr - statA.wr;
+      switch (selectedFilter) {
+        case 'highest-wins': return bWins - aWins;
+        case 'highest-losses': return bLosses - aLosses;
+        case 'highest-wr': return bWr - aWr;
+        case 'lowest-wr': return aWr - bWr;
+        default: return bWr - aWr;
       }
     });
 

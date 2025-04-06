@@ -12,15 +12,16 @@ export default function PredictionModal({
   selectedTeam, 
   nbaTeams 
 }) {
-  const [predictionType, setPredictionType] = useState(null);
+  const [step, setStep] = useState(1);
+  const [actualOutcome, setActualOutcome] = useState(null); // true = win, false = loss
   const [selectedOpponent, setSelectedOpponent] = useState(null);
-  const [expandedPrediction, setExpandedPrediction] = useState(null);
+  const [betType, setBetType] = useState(null); // 'for' or 'against'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { recordPrediction } = useAuth();
 
   const handlePredictionSubmit = async () => {
-    if (!selectedTeam || !selectedOpponent || !predictionType || !expandedPrediction) {
+    if (!selectedTeam || !selectedOpponent || actualOutcome === null || !betType) {
       setError('Please complete all prediction steps');
       return;
     }
@@ -29,24 +30,29 @@ export default function PredictionModal({
     setError(null);
     
     try {
-      // Determine which team is being predicted for/against
-      const predictedTeam = expandedPrediction === 'for' ? 
-        selectedTeam.name : 
-        selectedOpponent;
+      // Calculate if the bet was correct
+      const betCorrect = (actualOutcome && betType === 'for') || 
+                        (!actualOutcome && betType === 'against');
 
-      const { error } = await recordPrediction({
-        team_name: predictedTeam,
-        opponent: predictedTeam === selectedTeam.name ? selectedOpponent : selectedTeam.name,
-        prediction_type: predictionType,
-        bet_type: expandedPrediction,
-        outcome: true // Immediately mark as correct
+      // Record prediction for selected team
+      await recordPrediction({
+        team_name: selectedTeam.name,
+        opponent: selectedOpponent,
+        bet_type: betType,
+        outcome: betCorrect,
+        actual_outcome: actualOutcome
       });
 
-      if (error) throw error;
-      
-      setPredictionType(null);
-      setSelectedOpponent(null);
-      setExpandedPrediction(null);
+      // Record inverse prediction for opponent team
+      await recordPrediction({
+        team_name: selectedOpponent,
+        opponent: selectedTeam.name,
+        bet_type: betType === 'for' ? 'against' : 'for',
+        outcome: !betCorrect,
+        actual_outcome: !actualOutcome
+      });
+
+      resetForm();
       onClose();
     } catch (err) {
       setError(err.message || 'Failed to record prediction');
@@ -55,10 +61,119 @@ export default function PredictionModal({
     }
   };
 
+  const resetForm = () => {
+    setStep(1);
+    setActualOutcome(null);
+    setSelectedOpponent(null);
+    setBetType(null);
+  };
+
+  const renderStepContent = () => {
+    switch(step) {
+      case 1:
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Did {selectedTeam.name.split(' ').pop()} win this game?</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <Button
+                onClick={() => {
+                  setActualOutcome(true);
+                  setStep(2);
+                }}
+                className="h-20 flex flex-col items-center justify-center gap-2"
+                variant="outline"
+                darkMode={darkMode}
+              >
+                <FiCheck className="text-green-500 text-2xl" />
+                <span>Yes, they won</span>
+              </Button>
+              <Button
+                onClick={() => {
+                  setActualOutcome(false);
+                  setStep(2);
+                }}
+                className="h-20 flex flex-col items-center justify-center gap-2"
+                variant="outline"
+                darkMode={darkMode}
+              >
+                <FiX className="text-red-500 text-2xl" />
+                <span>No, they lost</span>
+              </Button>
+            </div>
+          </div>
+        );
+      case 2:
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Who were they playing against?</h3>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+              {nbaTeams
+                .filter(team => team.name !== selectedTeam.name)
+                .map(team => (
+                  <button
+                    key={team.name}
+                    onClick={() => {
+                      setSelectedOpponent(team.name);
+                      setStep(3);
+                    }}
+                    className={`flex flex-col items-center p-2 rounded-lg transition-colors ${
+                      darkMode ? 'bg-gray-800 hover:bg-gray-700 border-gray-700' : 'bg-white hover:bg-gray-50 border-gray-200'
+                    } border`}
+                  >
+                    <img 
+                      src={`/logos/${getLogoFilename(team.name)}.png`}
+                      alt={team.name}
+                      className="h-8 w-8 mb-1"
+                    />
+                    <span className="text-xs text-center">{team.name.split(' ').pop()}</span>
+                  </button>
+                ))}
+            </div>
+          </div>
+        );
+      case 3:
+        return (
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold">What was your bet?</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <Button
+                onClick={() => setBetType('for')}
+                className="h-20 flex flex-col items-center justify-center gap-2"
+                variant={betType === 'for' ? 'default' : 'outline'}
+                darkMode={darkMode}
+              >
+                <FiTrendingUp className="text-2xl" />
+                <span>FOR {selectedTeam.name.split(' ').pop()}</span>
+              </Button>
+              <Button
+                onClick={() => setBetType('against')}
+                className="h-20 flex flex-col items-center justify-center gap-2"
+                variant={betType === 'against' ? 'default' : 'outline'}
+                darkMode={darkMode}
+              >
+                <FiTrendingDown className="text-2xl" />
+                <span>AGAINST {selectedTeam.name.split(' ').pop()}</span>
+              </Button>
+            </div>
+            <Button
+              onClick={handlePredictionSubmit}
+              className="w-full mt-2"
+              darkMode={darkMode}
+              disabled={loading || !betType}
+            >
+              {loading ? "Saving..." : "Confirm Prediction"}
+            </Button>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   if (!selectedTeam) return null;
-  
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} darkMode={darkMode}>
+    <Modal isOpen={isOpen} onClose={() => { onClose(); resetForm(); }} darkMode={darkMode}>
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -66,17 +181,13 @@ export default function PredictionModal({
               src={`/logos/${getLogoFilename(selectedTeam.name)}.png`}
               alt={selectedTeam.name}
               className="h-16 w-16"
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = "/logos/default.png";
-              }}
             />
             <h2 className={`text-2xl font-bold ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-              Record Your Prediction
+              Record Prediction
             </h2>
           </div>
           <button 
-            onClick={onClose}
+            onClick={() => { onClose(); resetForm(); }}
             className={`p-2 rounded-full ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}
           >
             <FiX className={darkMode ? "text-gray-400" : "text-gray-600"} />
@@ -89,165 +200,7 @@ export default function PredictionModal({
           </div>
         )}
 
-        {!predictionType ? (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Will they win or lose?</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <Button
-                onClick={() => setPredictionType('win')}
-                className="h-20 flex flex-col items-center justify-center gap-2"
-                variant="outline"
-                darkMode={darkMode}
-              >
-                <FiCheck className="text-green-500 text-2xl" />
-                <span>Win</span>
-              </Button>
-              <Button
-                onClick={() => setPredictionType('lose')}
-                className="h-20 flex flex-col items-center justify-center gap-2"
-                variant="outline"
-                darkMode={darkMode}
-              >
-                <FiX className="text-red-500 text-2xl" />
-                <span>Lose</span>
-              </Button>
-            </div>
-          </div>
-        ) : !selectedOpponent ? (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-4">
-              <span className={`px-3 py-1 rounded-full ${predictionType === 'win' ? 
-                (darkMode ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-800') : 
-                (darkMode ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-800')}`}>
-                {predictionType === 'win' ? 'Win prediction' : 'Lose prediction'}
-              </span>
-              <button 
-                onClick={() => setPredictionType(null)}
-                className={`text-sm ${darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-800'}`}
-              >
-                Change
-              </button>
-            </div>
-            
-            <h3 className="text-lg font-semibold">Who are they playing against?</h3>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-              {nbaTeams
-                .filter(team => team.name !== selectedTeam.name)
-                .map(team => (
-                  <button
-                    key={team.name}
-                    onClick={() => setSelectedOpponent(team.name)}
-                    className={`flex flex-col items-center p-2 rounded-lg transition-colors ${
-                      selectedOpponent === team.name ? 
-                        (darkMode ? 'bg-emerald-800/50 border-emerald-500' : 'bg-emerald-100 border-emerald-400') : 
-                        (darkMode ? 'bg-gray-800 hover:bg-gray-700 border-gray-700' : 'bg-white hover:bg-gray-50 border-gray-200')
-                    } border`}
-                  >
-                    <img 
-                      src={`/logos/${getLogoFilename(team.name)}.png`}
-                      alt={team.name}
-                      className="h-8 w-8 mb-1"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = "/logos/default.png";
-                      }}
-                    />
-                    <span className="text-xs text-center">{team.name.split(' ').pop()}</span>
-                  </button>
-                ))}
-            </div>
-          </div>
-        ) : !expandedPrediction ? (
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-4">
-              <span className={`px-3 py-1 rounded-full ${predictionType === 'win' ? 
-                (darkMode ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-800') : 
-                (darkMode ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-800')}`}>
-                {predictionType === 'win' ? 'Win prediction' : 'Lose prediction'}
-              </span>
-              <span className={`px-3 py-1 rounded-full ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-800'}`}>
-                vs {selectedOpponent.split(' ').pop()}
-              </span>
-              <button 
-                onClick={() => setSelectedOpponent(null)}
-                className={`text-sm ${darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-800'}`}
-              >
-                Change
-              </button>
-            </div>
-            
-            <h3 className="text-lg font-semibold">Prediction Type</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <Button
-                onClick={() => setExpandedPrediction(predictionType === 'win' ? 'for' : 'against')}
-                className="h-20 flex flex-col items-center justify-center gap-2"
-                variant="outline"
-                darkMode={darkMode}
-              >
-                {predictionType === 'win' ? (
-                  <>
-                    <FiTrendingUp className="text-green-500 text-2xl" />
-                    <span>Predict FOR {selectedTeam.name.split(' ').pop()}</span>
-                  </>
-                ) : (
-                  <>
-                    <FiTrendingDown className="text-red-500 text-2xl" />
-                    <span>Predict AGAINST {selectedTeam.name.split(' ').pop()}</span>
-                  </>
-                )}
-              </Button>
-              <Button
-                onClick={() => setExpandedPrediction(predictionType === 'win' ? 'against' : 'for')}
-                className="h-20 flex flex-col items-center justify-center gap-2"
-                variant="outline"
-                darkMode={darkMode}
-              >
-                {predictionType === 'win' ? (
-                  <>
-                    <FiTrendingDown className="text-red-500 text-2xl" />
-                    <span>Predict AGAINST {selectedOpponent.split(' ').pop()}</span>
-                  </>
-                ) : (
-                  <>
-                    <FiTrendingUp className="text-green-500 text-2xl" />
-                    <span>Predict FOR {selectedOpponent.split(' ').pop()}</span>
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-4">
-              <span className={`px-3 py-1 rounded-full ${predictionType === 'win' ? 
-                (darkMode ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-800') : 
-                (darkMode ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-800')}`}>
-                {predictionType === 'win' ? 'Win prediction' : 'Lose prediction'}
-              </span>
-              <span className={`px-3 py-1 rounded-full ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-800'}`}>
-                vs {selectedOpponent.split(' ').pop()}
-              </span>
-              <span className={`px-3 py-1 rounded-full ${darkMode ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-800'}`}>
-                {expandedPrediction === 'for' ? 'FOR' : 'AGAINST'}
-              </span>
-              <button 
-                onClick={() => setExpandedPrediction(null)}
-                className={`text-sm ${darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-800'}`}
-              >
-                Change
-              </button>
-            </div>
-            
-            <Button
-              onClick={handlePredictionSubmit}
-              className="w-full mt-2"
-              darkMode={darkMode}
-              disabled={loading}
-            >
-              {loading ? "Saving Prediction..." : "Confirm Prediction"}
-            </Button>
-          </div>
-        )}
+        {renderStepContent()}
       </div>
     </Modal>
   );

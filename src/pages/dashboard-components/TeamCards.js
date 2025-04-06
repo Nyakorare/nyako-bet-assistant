@@ -136,28 +136,28 @@ export default function TeamCards({
               }`}>{team.name}</h2>
               
               {/* Stats grid */}
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className={`${darkMode ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-600'} p-2 rounded`}>
-                  <p>{activeTab === "global" ? "Win Rate" : "Your WR"}</p>
-                  <p className={`font-semibold ${
-                    darkMode ? 'text-emerald-400' : 'text-emerald-600'
-                  }`}>
-                    {activeTab === "global" ? team.wr : team.userWr || 'N/A'}
-                  </p>
-                </div>
-                <div className={`${darkMode ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-600'} p-2 rounded`}>
-                  <p>{activeTab === "global" ? "Wins" : "Your Wins"}</p>
-                  <p className="font-semibold">{activeTab === "global" ? team.wins : team.userWins || '0'}</p>
-                </div>
-                <div className={`${darkMode ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-600'} p-2 rounded`}>
-                  <p>{activeTab === "global" ? "Losses" : "Your Losses"}</p>
-                  <p className="font-semibold">{activeTab === "global" ? team.losses : team.userLosses || '0'}</p>
-                </div>
-                <div className={`${darkMode ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-600'} p-2 rounded`}>
-                  <p>Rank</p>
-                  <p className="font-semibold">#{team.rank || 'N/A'}</p>
-                </div>
-              </div>
+  <div className="grid grid-cols-2 gap-2 text-sm">
+    <div className={`${darkMode ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-600'} p-2 rounded`}>
+      <p>Win Rate</p>
+      <p className={`font-semibold ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+        {team.wr || 'N/A'}
+      </p>
+    </div>
+    <div className={`${darkMode ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-600'} p-2 rounded`}>
+      <p>Wins</p>
+      <p className="font-semibold">{team.wins || '0'}</p>
+    </div>
+    <div className={`${darkMode ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-600'} p-2 rounded`}>
+      <p>Losses</p>
+      <p className="font-semibold">{team.losses || '0'}</p>
+    </div>
+    {activeTab === 'global' && (
+      <div className={`${darkMode ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-600'} p-2 rounded`}>
+        <p>Rank</p>
+        <p className="font-semibold">#{team.rank || 'N/A'}</p>
+      </div>
+    )}
+  </div>
               
               {activeTab === "user" && (
                 <Button
