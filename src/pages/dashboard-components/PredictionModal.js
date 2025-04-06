@@ -3,26 +3,56 @@ import { FiX, FiCheck, FiTrendingUp, FiTrendingDown } from "react-icons/fi";
 import Modal from "../../components/ui/modal";
 import Button from "../../components/ui/button";
 import { getLogoFilename } from "../Dashboard";
+import { useAuth } from "../../context/AuthContext";
 
-export default function PredictionModal({ isOpen, onClose, darkMode, selectedTeam, nbaTeams }) {
+export default function PredictionModal({ 
+  isOpen, 
+  onClose, 
+  darkMode, 
+  selectedTeam, 
+  nbaTeams 
+}) {
   const [predictionType, setPredictionType] = useState(null);
   const [selectedOpponent, setSelectedOpponent] = useState(null);
   const [expandedPrediction, setExpandedPrediction] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const { recordPrediction } = useAuth();
 
-  const handlePredictionSubmit = () => {
-    // Here you would typically send the prediction to your backend
-    console.log("Prediction recorded:", {
-      team: selectedTeam.name,
-      prediction: predictionType,
-      opponent: selectedOpponent,
-      betType: expandedPrediction
-    });
+  const handlePredictionSubmit = async () => {
+    if (!selectedTeam || !selectedOpponent || !predictionType || !expandedPrediction) {
+      setError('Please complete all prediction steps');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
     
-    // Reset and close modal
-    setPredictionType(null);
-    setSelectedOpponent(null);
-    setExpandedPrediction(null);
-    onClose();
+    try {
+      // Determine which team is being predicted for/against
+      const predictedTeam = expandedPrediction === 'for' ? 
+        selectedTeam.name : 
+        selectedOpponent;
+
+      const { error } = await recordPrediction({
+        team_name: predictedTeam,
+        opponent: predictedTeam === selectedTeam.name ? selectedOpponent : selectedTeam.name,
+        prediction_type: predictionType,
+        bet_type: expandedPrediction,
+        outcome: true // Immediately mark as correct
+      });
+
+      if (error) throw error;
+      
+      setPredictionType(null);
+      setSelectedOpponent(null);
+      setExpandedPrediction(null);
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Failed to record prediction');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!selectedTeam) return null;
@@ -53,6 +83,12 @@ export default function PredictionModal({ isOpen, onClose, darkMode, selectedTea
           </button>
         </div>
         
+        {error && (
+          <div className={`mb-4 p-3 rounded-lg ${darkMode ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-800'}`}>
+            {error}
+          </div>
+        )}
+
         {!predictionType ? (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Will they win or lose?</h3>
@@ -206,8 +242,9 @@ export default function PredictionModal({ isOpen, onClose, darkMode, selectedTea
               onClick={handlePredictionSubmit}
               className="w-full mt-2"
               darkMode={darkMode}
+              disabled={loading}
             >
-              Confirm Prediction
+              {loading ? "Saving Prediction..." : "Confirm Prediction"}
             </Button>
           </div>
         )}

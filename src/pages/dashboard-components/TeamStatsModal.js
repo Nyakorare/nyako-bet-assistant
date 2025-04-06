@@ -1,7 +1,9 @@
-import { FiX, FiTrendingUp, FiTrendingDown, FiUser } from "react-icons/fi";
+import { useState, useEffect } from "react";
+import { FiX, FiTrendingUp, FiTrendingDown } from "react-icons/fi";
 import Modal from "../../components/ui/modal";
 import { getLogoFilename } from "../Dashboard";
 import Button from "../../components/ui/button";
+import { useAuth } from "../../context/AuthContext";
 
 export default function TeamStatsModal({ 
   isOpen, 
@@ -11,6 +13,76 @@ export default function TeamStatsModal({
   activeTab,
   onRecordPrediction
 }) {
+  const [predictions, setPredictions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const { user, getUserPredictions, getTeamPredictions } = useAuth();
+
+  useEffect(() => {
+    const loadPredictions = async () => {
+      if (!selectedTeam) return;
+      
+      setLoading(true);
+      try {
+        const { data } = activeTab === "user" 
+          ? await getUserPredictions()
+          : await getTeamPredictions(selectedTeam.name);
+        
+        const filtered = data?.filter(p => p.team_name === selectedTeam.name) || [];
+        setPredictions(filtered);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (isOpen) {
+      loadPredictions();
+    }
+  }, [isOpen, activeTab, selectedTeam]);
+
+  const renderPredictionList = (items, isWin) => {
+    if (!items || items.length === 0) {
+      return (
+        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          No {isWin ? 'win' : 'loss'} predictions recorded
+        </p>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-2 gap-2">
+        {items.map((item, index) => (
+          <div 
+            key={index} 
+            className={`p-2 rounded ${darkMode ? 'bg-gray-700/50' : 'bg-gray-200'}`}
+          >
+            <p className="text-sm">vs {item.opponent}</p>
+            {item.created_at && (
+              <p className="text-xs mt-1">
+                {new Date(item.created_at).toLocaleDateString()}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const stats = {
+    wins: {
+      for: predictions.filter(p => p.outcome === true && p.bet_type === 'for'),
+      against: predictions.filter(p => p.outcome === true && p.bet_type === 'against')
+    },
+    losses: {
+      for: predictions.filter(p => p.outcome === false && p.bet_type === 'for'),
+      against: predictions.filter(p => p.outcome === false && p.bet_type === 'against')
+    }
+  };
+
+  const resolvedPreds = predictions.filter(p => p.outcome !== null);
+  const correctPreds = resolvedPreds.filter(p => p.outcome === true).length;
+  const totalPreds = resolvedPreds.length;
+  const winRate = totalPreds > 0 ? `${Math.round((correctPreds / totalPreds) * 100)}%` : 'N/A';
+
   if (!selectedTeam) return null;
   
   return (
@@ -45,45 +117,17 @@ export default function TeamStatsModal({
               <FiTrendingUp /> Wins Analysis
             </h3>
             <div className="space-y-4">
-            {activeTab === "user" && (
-            <div>
-                <h4 className="font-medium mb-2 flex items-center gap-2">
-                <FiUser /> Your Correct Win Predictions
-                </h4>
-                <div className="grid grid-cols-2 gap-2">
-                {selectedTeam.userWinsFor?.length > 0 ? (
-                    selectedTeam.userWinsFor.map((win, index) => (
-                    <div key={index} className={`p-2 rounded ${darkMode ? 'bg-gray-700/50' : 'bg-gray-200'}`}>
-                        <p className="text-sm">vs {win.opponent}</p>
-                        <p className="text-xs mt-1">{win.date}</p>
-                    </div>
-                    ))
-                ) : (
-                    <p className={`col-span-2 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    No correct win predictions
-                    </p>
-                )}
-                </div>
-            </div>
-            )}
-              
               <div>
-                <h4 className="font-medium mb-2 flex items-center gap-2">
-                  <FiUser /> {activeTab === "user" ? "Your Win Predictions" : "Team Wins Against"}
+                <h4 className="font-medium mb-2">
+                  {activeTab === "user" ? "Your Correct Predictions" : "Team Wins"} - Betting FOR
                 </h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {selectedTeam.winsAgainst?.length > 0 ? (
-                    selectedTeam.winsAgainst.map((team, index) => (
-                      <div key={index} className={`p-2 rounded ${darkMode ? 'bg-gray-700/50' : 'bg-gray-200'}`}>
-                        <p className="text-sm">vs {team}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className={`col-span-2 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {activeTab === "user" ? "No win predictions" : "No wins recorded"}
-                    </p>
-                  )}
-                </div>
+                {renderPredictionList(stats.wins.for, true)}
+              </div>
+              <div>
+                <h4 className="font-medium mb-2">
+                  {activeTab === "user" ? "Your Correct Predictions" : "Team Wins"} - Betting AGAINST
+                </h4>
+                {renderPredictionList(stats.wins.against, true)}
               </div>
             </div>
           </div>
@@ -93,45 +137,17 @@ export default function TeamStatsModal({
               <FiTrendingDown /> Losses Analysis
             </h3>
             <div className="space-y-4">
-            {activeTab === "user" && (
-            <div>
-                <h4 className="font-medium mb-2 flex items-center gap-2">
-                <FiUser /> Your Incorrect Loss Predictions
-                </h4>
-                <div className="grid grid-cols-2 gap-2">
-                {selectedTeam.userLossesAgainst?.length > 0 ? (
-                    selectedTeam.userLossesAgainst.map((loss, index) => (
-                    <div key={index} className={`p-2 rounded ${darkMode ? 'bg-gray-700/50' : 'bg-gray-200'}`}>
-                        <p className="text-sm">vs {loss.opponent}</p>
-                        <p className="text-xs mt-1">{loss.date}</p>
-                    </div>
-                    ))
-                ) : (
-                    <p className={`col-span-2 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    No incorrect loss predictions
-                    </p>
-                )}
-                </div>
-            </div>
-            )}
-              
               <div>
-                <h4 className="font-medium mb-2 flex items-center gap-2">
-                  <FiUser /> {activeTab === "user" ? "Your Loss Predictions" : "Team Losses Against"}
+                <h4 className="font-medium mb-2">
+                  {activeTab === "user" ? "Your Incorrect Predictions" : "Team Losses"} - Betting FOR
                 </h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {selectedTeam.lossesAgainst?.length > 0 ? (
-                    selectedTeam.lossesAgainst.map((team, index) => (
-                      <div key={index} className={`p-2 rounded ${darkMode ? 'bg-gray-700/50' : 'bg-gray-200'}`}>
-                        <p className="text-sm">vs {team}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className={`col-span-2 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {activeTab === "user" ? "No loss predictions" : "No losses recorded"}
-                    </p>
-                  )}
-                </div>
+                {renderPredictionList(stats.losses.for, false)}
+              </div>
+              <div>
+                <h4 className="font-medium mb-2">
+                  {activeTab === "user" ? "Your Incorrect Predictions" : "Team Losses"} - Betting AGAINST
+                </h4>
+                {renderPredictionList(stats.losses.against, false)}
               </div>
             </div>
           </div>
@@ -147,7 +163,7 @@ export default function TeamStatsModal({
                 {activeTab === "user" ? "Prediction Accuracy" : "Win Rate"}
               </p>
               <p className={`text-xl font-bold ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                {activeTab === "user" ? selectedTeam.userWr || 'N/A' : selectedTeam.wr || 'N/A'}
+                {winRate}
               </p>
             </div>
             <div className="text-center">
@@ -155,7 +171,7 @@ export default function TeamStatsModal({
                 {activeTab === "user" ? "Correct Predictions" : "Wins"}
               </p>
               <p className="text-xl font-bold">
-                {activeTab === "user" ? selectedTeam.userWins || '0' : selectedTeam.wins || '0'}
+                {correctPreds}
               </p>
             </div>
             <div className="text-center">
@@ -163,25 +179,23 @@ export default function TeamStatsModal({
                 {activeTab === "user" ? "Incorrect Predictions" : "Losses"}
               </p>
               <p className="text-xl font-bold">
-                {activeTab === "user" ? selectedTeam.userLosses || '0' : selectedTeam.losses || '0'}
+                {totalPreds - correctPreds}
               </p>
             </div>
           </div>
         </div>
 
         {activeTab === "user" && (
-            <Button
-                onClick={() => {
-                onClose(); // Close the stats modal
-                // You'll need to pass down the handleRecordPrediction function from Dashboard
-                // and call it here with selectedTeam
-                onRecordPrediction(selectedTeam);
-                }}
-                className="w-full mt-4"
-                darkMode={darkMode}
-            >
-                Make New Prediction
-            </Button>
+          <Button
+            onClick={() => {
+              onClose();
+              onRecordPrediction(selectedTeam);
+            }}
+            className="w-full mt-4"
+            darkMode={darkMode}
+          >
+            Make New Prediction
+          </Button>
         )}
       </div>
     </Modal>

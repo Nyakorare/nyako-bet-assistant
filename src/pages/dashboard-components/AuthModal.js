@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FiX, FiMail, FiCheck, FiAlertCircle } from "react-icons/fi";
+import { FiX, FiMail, FiCheck, FiAlertCircle, FiUser } from "react-icons/fi";
 import Modal from "../../components/ui/modal";
 import Button from "../../components/ui/button";
 import { supabase } from "../../lib/supabase";
@@ -7,9 +7,9 @@ import { supabase } from "../../lib/supabase";
 export default function AuthModal({ isOpen, onClose, darkMode, type }) {
   const [authType, setAuthType] = useState(type);
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [usernameAvailable, setUsernameAvailable] = useState(true);
@@ -18,6 +18,7 @@ export default function AuthModal({ isOpen, onClose, darkMode, type }) {
   const [emailSent, setEmailSent] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [loginMethod, setLoginMethod] = useState("email"); // 'email' or 'username'
 
   const isSignIn = authType === "signin";
 
@@ -66,7 +67,11 @@ export default function AuthModal({ isOpen, onClose, darkMode, type }) {
   // Validate form
   useEffect(() => {
     if (isSignIn) {
-      setFormValid(email.length > 0 && password.length >= 6);
+      if (loginMethod === "email") {
+        setFormValid(email.length > 0 && password.length >= 6);
+      } else {
+        setFormValid(username.length > 0 && password.length >= 6);
+      }
     } else {
       setFormValid(
         email.length > 0 &&
@@ -77,7 +82,7 @@ export default function AuthModal({ isOpen, onClose, darkMode, type }) {
         password === confirmPassword
       );
     }
-  }, [email, password, confirmPassword, username, isSignIn, emailAvailable, usernameAvailable]);
+  }, [email, password, confirmPassword, username, isSignIn, emailAvailable, usernameAvailable, loginMethod]);
 
   const handleAuth = async (e) => {
     e.preventDefault();
@@ -86,11 +91,31 @@ export default function AuthModal({ isOpen, onClose, darkMode, type }) {
 
     try {
       if (isSignIn) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        if (error) throw error;
+        let authResponse;
+        if (loginMethod === "email") {
+          authResponse = await supabase.auth.signInWithPassword({
+            email,
+            password
+          });
+        } else {
+          // First get the email associated with the username
+          const { data: userData, error: userError } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('username', username)
+            .single();
+          
+          if (userError || !userData) {
+            throw new Error('Invalid username or password');
+          }
+
+          authResponse = await supabase.auth.signInWithPassword({
+            email: userData.email,
+            password
+          });
+        }
+
+        if (authResponse.error) throw authResponse.error;
         onClose();
       } else {
         if (!acceptedTerms) {
@@ -238,64 +263,102 @@ export default function AuthModal({ isOpen, onClose, darkMode, type }) {
           </button>
         </div>
         
-        <form onSubmit={handleAuth}>
-          <div className="mb-4">
-            <label className={`block mb-2 ${
-              darkMode ? 'text-gray-300' : 'text-gray-700'
-            }`}>
+        {isSignIn && (
+          <div className="flex mb-4 gap-2">
+            <Button
+              onClick={() => setLoginMethod("email")}
+              variant={loginMethod === "email" ? "default" : "outline"}
+              className="flex-1"
+              darkMode={darkMode}
+            >
+              <FiMail className="mr-2" />
               Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={`w-full p-3 rounded-lg border ${
-                darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-300'
-              } ${!emailAvailable && !isSignIn ? 'border-red-500' : ''}`}
-              required
-            />
-            {!emailAvailable && !isSignIn && (
-              <p className={`text-xs mt-1 ${
-                darkMode ? 'text-red-400' : 'text-red-600'
-              }`}>
-                Email already registered
-              </p>
-            )}
+            </Button>
+            <Button
+              onClick={() => setLoginMethod("username")}
+              variant={loginMethod === "username" ? "default" : "outline"}
+              className="flex-1"
+              darkMode={darkMode}
+            >
+              <FiUser className="mr-2" />
+              Username
+            </Button>
           </div>
-          
-          {!isSignIn && (
+        )}
+        
+        <form onSubmit={handleAuth}>
+          {isSignIn && loginMethod === "username" ? (
             <div className="mb-4">
               <label className={`block mb-2 ${
                 darkMode ? 'text-gray-300' : 'text-gray-700'
-              }`}>
-                Username (min 4 characters)
-              </label>
+              }`}>Username</label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className={`w-full p-3 rounded-lg border ${
                   darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-300'
-                } ${!usernameAvailable ? 'border-red-500' : ''}`}
-                minLength={4}
+                }`}
                 required
               />
-              {!usernameAvailable && (
+            </div>
+          ) : (
+            <div className="mb-4">
+              <label className={`block mb-2 ${
+                darkMode ? 'text-gray-300' : 'text-gray-700'
+              }`}>Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={`w-full p-3 rounded-lg border ${
+                  darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-300'
+                } ${!emailAvailable && !isSignIn ? 'border-red-500' : ''}`}
+                required
+              />
+              {!emailAvailable && !isSignIn && (
                 <p className={`text-xs mt-1 ${
                   darkMode ? 'text-red-400' : 'text-red-600'
                 }`}>
-                  Username already taken
+                  Email already registered
                 </p>
               )}
+            </div>
+          )}
+          
+          {!isSignIn && (
+            <div className="mb-4">
+              <label className={`block mb-2 ${
+                darkMode ? 'text-gray-300' : 'text-gray-700'
+              }`}>Username (min 4 characters)</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className={`w-full p-3 rounded-lg border ${
+                    darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-300'
+                  } ${!usernameAvailable ? 'border-red-500' : ''}`}
+                  minLength={4}
+                  required
+                />
+                {username.length > 0 && (
+                  <div className="absolute right-3 top-3.5">
+                    {usernameAvailable ? (
+                      <FiCheck className={darkMode ? "text-green-400" : "text-green-600"} />
+                    ) : (
+                      <span className="text-xs text-red-500">Taken</span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
           
           <div className="mb-4">
             <label className={`block mb-2 ${
               darkMode ? 'text-gray-300' : 'text-gray-700'
-            }`}>
-              Password (min 6 characters)
-            </label>
+            }`}>Password (min 6 characters)</label>
             <input
               type="password"
               value={password}
@@ -312,9 +375,7 @@ export default function AuthModal({ isOpen, onClose, darkMode, type }) {
             <div className="mb-6">
               <label className={`block mb-2 ${
                 darkMode ? 'text-gray-300' : 'text-gray-700'
-              }`}>
-                Confirm Password
-              </label>
+              }`}>Confirm Password</label>
               <input
                 type="password"
                 value={confirmPassword}

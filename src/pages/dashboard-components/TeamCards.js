@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FiSearch, FiFilter } from "react-icons/fi";
 import Button from "../../components/ui/button";
 import { filterOptions, getLogoFilename } from "../Dashboard";
@@ -12,9 +12,8 @@ export default function TeamCards({
   setSearchQuery,
   selectedFilter,
   setSelectedFilter,
-  setShowAccountSettings,
   handleTeamClick,
-  handleRecordPrediction
+  onRecordPrediction
 }) {
   const [hoveredCard, setHoveredCard] = useState(null);
   const { user } = useAuth();
@@ -37,13 +36,23 @@ export default function TeamCards({
           }`}>
             Create an account or sign in to record and track your NBA predictions.
           </p>
-          <Button
-            onClick={() => setShowAccountSettings(true)}
-            className="w-full"
-            darkMode={darkMode}
-          >
-            Sign In / Register
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => onRecordPrediction(null, 'signin')}
+              className="flex-1"
+              darkMode={darkMode}
+            >
+              Sign In
+            </Button>
+            <Button
+              onClick={() => onRecordPrediction(null, 'signup')}
+              variant="outline"
+              className="flex-1"
+              darkMode={darkMode}
+            >
+              Register
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -154,7 +163,7 @@ export default function TeamCards({
                 <Button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleRecordPrediction(team);
+                    onRecordPrediction(team);
                   }}
                   className="w-full mt-4"
                   darkMode={darkMode}
