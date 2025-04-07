@@ -242,7 +242,7 @@ export default function Dashboard() {
       />
       
       {activeTab === "user" && (
-        <div className={`sticky top-16 z-40 p-4 ${
+        <div className={`sticky top-16 z-40 p-2 md:p-4 ${
           darkMode ? 'bg-gray-800/80 border-b border-gray-700' : 'bg-white border-b border-gray-200'
         } backdrop-blur-sm`}>
           <div className="flex items-center justify-between gap-4">

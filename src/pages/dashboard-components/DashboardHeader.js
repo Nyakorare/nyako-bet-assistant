@@ -43,7 +43,7 @@ export default function DashboardHeader({ activeTab, setActiveTab, darkMode, tog
               <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-emerald-600 bg-clip-text text-transparent">
                 NBA
               </h1>
-              <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Nyako Prediction Tracker</p>
+              <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Nyako Bet Assistant</p>
             </div>
             <button 
               onClick={toggleDarkMode}
